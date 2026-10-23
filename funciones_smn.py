@@ -1,3 +1,5 @@
+from pathlib import Path
+import json
 from datetime import datetime
 
 def separar_viento(campo_viento: str) -> tuple:
@@ -147,3 +149,36 @@ def mostrar_resumen(observaciones: dict) -> None:
     print("\ntop 5 menores humedades registradas:")
     for ciudad, hum in top_n_ciudades(observaciones, "humedad", 5, descendente=False):
         print(f"  -{ciudad}: {int(hum)}%")
+
+def guardar_como_json(observaciones: dict, ruta_txt: str) -> list:
+    dir_json = Path("obs_json")
+    if not dir_json.exists():
+        print("el directorio obs_json no existe, creándolo...")
+        dir_json.mkdir(exist_ok = True)
+    else:
+        print("el directorio 'obs_json' ya existe")
+
+    diccionario_json = {}
+    for ciudad, datos in observaciones.items():
+        datos_copia = datos.copy()
+        
+        if isinstance(datos_copia.get("fecha_y_hora"), datetime):
+            datos_copia["fecha_y_hora"] = datos_copia["fecha_y_hora"].isoformat(timespec='minutes')
+        diccionario_json[ciudad] = datos_copia
+    
+    nombre_archivo = Path(ruta_txt).name
+    ruta_json = dir_json / (Path(nombre_archivo).stem + ".json")
+    print(f"convirtiendo a json y guardando en {ruta_json}...")
+
+    with open(ruta_json, "w", encoding="utf-8") as archivo_json:
+        json.dup(diccionario_json, archivo_json, ensure_ascii=False, indent=4)
+    print("converción y guardado exitosos")
+    return str(ruta_json)
+
+
+def contar_archivos_en_direcctorios() -> tuple:
+    dir_datos = Path("datos")
+    cant_txt = len(list(dir_datos.glob("*.txt"))) if dir_datos.exists() else 0
+    dir_json = Path("obs_json")
+    cant_json = len(list(dir_json.glob("*.json"))) if dir_json.exists() else 0
+    return cant_txt, cant_json
