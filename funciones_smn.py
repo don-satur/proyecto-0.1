@@ -38,33 +38,39 @@ def parsear_fecha_hora(fecha: str, hora: str) -> datetime:
 def leer_observaciones(ruta: str) -> dict:
     observaciones = {}
 
-    with open(ruta, "r", encoding="cp1252") as archivo:
+    try:
+        with open(ruta, "r", encoding="utf-8") as archivo:
+            lineas = archivo.readlines()
+            
+    except UnicodeDecodeError:
+        with open(ruta, "r", encoding="latin-1") as archivo:
+            lineas = archivo.readlines()
+            
+    for linea in lineas:
+        campos = linea.strip().split(";")
 
-        for linea in archivo:
-            campos = linea.strip().split(";")
+        if len(campos) == 10:
+            ciudad = campos[0].strip()
+            direccion, velocidad = separar_viento(campos[8])
 
-            if len(campos) == 10:
-                ciudad = campos[0].strip()
-                direccion, velocidad = separar_viento(campos[8])
+            sen_term_texto = campos[6].strip()
+            sensacion = None if sen_term_texto == "No se calcula" else float(sen_term_texto)
 
-                sen_term_texto = campos[6].strip()
-                sensacion = None if sen_term_texto == "No se calcula" else float(sen_term_texto)
+            humedad_texto = campos[7].strip().replace("%", "").strip()
+            humedad_num = float(humedad_texto) if humedad_texto else 0.0
 
-                humedad_texto = campos[7].strip().replace("%", "").strip()
-                humedad_num = float(humedad_texto) if humedad_texto else 0.0
+            fecha_y_hora = parsear_fecha_hora(campos[1], campos[2])
 
-                fecha_y_hora = parsear_fecha_hora(campos[1], campos[2])
-
-                observaciones[ciudad] = {
-                    "fecha_y_hora": fecha_y_hora,
-                    "condicion": campos[3].strip(),
-                    "visibilidad": campos[4].strip(),
-                    "temperatura": float(campos[5].strip()),
-                    "sensacion_termica": sensacion,
-                    "humedad": humedad_num,
-                    "direccion_viento": direccion,
-                    "velocidad_viento": velocidad,
-                    "presion": campos[9].strip().strip("/").strip()
+            observaciones[ciudad] = {
+                "fecha_y_hora": fecha_y_hora,
+                "condicion": campos[3].strip(),
+                "visibilidad": campos[4].strip(),
+                "temperatura": float(campos[5].strip()),
+                "sensacion_termica": sensacion,
+                "humedad": humedad_num,
+                "direccion_viento": direccion,
+                "velocidad_viento": velocidad,
+                "presion": campos[9].strip().strip("/").strip()
                 }
 
     return observaciones
@@ -171,14 +177,26 @@ def guardar_como_json(observaciones: dict, ruta_txt: str) -> list:
     print(f"convirtiendo a json y guardando en {ruta_json}...")
 
     with open(ruta_json, "w", encoding="utf-8") as archivo_json:
-        json.dup(diccionario_json, archivo_json, ensure_ascii=False, indent=4)
-    print("converción y guardado exitosos")
+        json.dump(diccionario_json, archivo_json, ensure_ascii=False, indent=4)
+    print("conversión y guardado exitosos")
     return str(ruta_json)
 
 
-def contar_archivos_en_direcctorios() -> tuple:
+def contar_archivos_en_directorios() -> tuple:
     dir_datos = Path("datos")
     cant_txt = len(list(dir_datos.glob("*.txt"))) if dir_datos.exists() else 0
     dir_json = Path("obs_json")
     cant_json = len(list(dir_json.glob("*.json"))) if dir_json.exists() else 0
     return cant_txt, cant_json
+
+def cargar_desde_json (ruta_json: str) -> dict:
+    ruta = Path(ruta_json)
+    if not ruta.exists():
+        print(f"error, el archivo {ruta} no existe")
+        return {}
+    print(f"leyendo archivo json: {ruta}...")
+    with open (ruta, "r", encoding="utf-8") as archivo_json:
+        datos = json.load(archivo_json)
+    return datos
+
+
